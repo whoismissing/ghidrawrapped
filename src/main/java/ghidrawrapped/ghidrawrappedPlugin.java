@@ -16,6 +16,9 @@
 package ghidrawrapped;
 
 import java.awt.BorderLayout;
+import java.io.File;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Objects;
 
 import javax.swing.*;
@@ -24,21 +27,21 @@ import docking.ActionContext;
 import docking.ComponentProvider;
 import docking.action.DockingAction;
 import docking.action.ToolBarData;
-import docking.UndoRedoKeeper;
-import ghidra.app.ExamplesPluginPackage;
+import docking.tool.ToolConstants;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
-import ghidra.app.services.ConsoleService;
 import ghidra.framework.data.DomainObjectAdapterDB;
 import ghidra.framework.model.DomainObject;
 import ghidra.framework.model.Transaction;
 import ghidra.framework.model.TransactionListener;
 import ghidra.framework.options.SaveState;
+import ghidra.framework.options.ToolOptions;
 import ghidra.framework.plugintool.*;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.model.listing.Program;
 import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
+import ghidra.util.datastruct.FixedSizeStack;
 import resources.Icons;
 
 /**
@@ -59,8 +62,8 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	MyProvider provider;
 	Program program;
 	PluginTool pluginTool;
-	ConsoleService console;
-	
+
+	private String EVENT_FILEPATH = "Event Filepath";
 	private ListenerForProgramChanges listener;
 
 	/**
@@ -83,7 +86,9 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		
 		listener = new ListenerForProgramChanges();
 		
-		console = pluginTool.getService(ConsoleService.class);
+		ToolOptions toolOptions = pluginTool.getOptions(ToolConstants.TOOL_OPTIONS);
+		toolOptions.registerOption(EVENT_FILEPATH, "", null,
+				"Specifies the filename to read and write user events to.");
 	}
 
 	@Override
@@ -95,6 +100,8 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	
 	@Override
 	public void readConfigState(SaveState saveState) {
+		// TODO: Figure out how to permit users to specify a record file location in the Tool
+		// configuration.
 	    Msg.debug(this, "readConfigState() called");
 	}
 
@@ -105,10 +112,16 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	
 	@Override
 	protected void prepareToSave(DomainObject dobj) {
-		// TODO: write to file
-		
 		super.prepareToSave(dobj);
+		
+		ToolOptions pluginOptions = pluginTool.getOptions(EVENT_FILEPATH);
+		File eventFile = pluginOptions.getFile(EVENT_FILEPATH, null);
+		
+		// TODO: write to file
 		Msg.debug(this, "prepareToSave: ");
+		if (!Objects.isNull(eventFile)) {
+			Msg.debug(this, "prepareToSave: " + eventFile.getName());
+		}
 
 	}
 	
@@ -122,11 +135,26 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		program.addTransactionListener(listener);
 	}
 	
+	class UserEvent {
+		
+		OffsetDateTime eventTime;
+		String eventDescription;
+		
+		public UserEvent(String description) {
+			eventTime = OffsetDateTime.now( ZoneOffset.UTC );
+			eventDescription = description;			
+		}
+	}
+	
+	/**
+	 * Listener applied to current Program which will record all undoable actions to a stack.
+	 */
 	class ListenerForProgramChanges implements TransactionListener {
-		private UndoRedoKeeper undoRedoKeeper;
-
+		private static final int MAX_UNDO_REDO_SIZE = 50;
+		
+		private FixedSizeStack<UserEvent> undoStack = new FixedSizeStack<>(MAX_UNDO_REDO_SIZE);
+		
 		public ListenerForProgramChanges() {
-			undoRedoKeeper = new UndoRedoKeeper();
 		}
 		
 		@Override
@@ -136,9 +164,14 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			}
 			
 			String description = tx.getDescription();
+			if (Objects.isNull(description)) {
+				return;
+			}
 			
 			Msg.debug(this, "transactionStarted: " + description);
-			
+			// FIXME: Some transactionStarted() calls do not have a corresponding transactionEnded()?
+			UserEvent event = new UserEvent(description);
+			undoStack.push(event);
 		}
 
 		@Override
@@ -148,14 +181,18 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			}
 						
 			Transaction tx = domainObj.getCurrentTransaction();
-			
 			if (Objects.isNull(tx)) {
 				return;
 			}
 			
 			String description = tx.getDescription();
+			if (Objects.isNull(description)) {
+				return;
+			}
 			
 			Msg.debug(this, "transactionEnded: " + description);
+			UserEvent event = new UserEvent(description);
+			undoStack.push(event);
 		}
 
 		@Override
@@ -165,12 +202,15 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			}
 			
 			Transaction tx = domainObj.getCurrentTransaction();
-			
 			if (Objects.isNull(tx)) {
 				return;
 			}
 			
 			String description = tx.getDescription();
+			if (Objects.isNull(description)) {
+				return;
+			}
+			
 			Msg.debug(this, "undoStackChanged: " + description);
 		}
 
@@ -181,13 +221,30 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			}
 			
 			Transaction tx = domainObj.getCurrentTransaction();
-			
 			if (Objects.isNull(tx)) {
 				return;
 			}
 			
 			String description = tx.getDescription();
+			if (Objects.isNull(description)) {
+				return;
+			}
+			
 			Msg.debug(this, "undoRedoOccurred: " + description);
+			
+			// FIXME: This is an attempt to distinguish between undo and redo events
+			int undoStackDepth = domainObj.getUndoStackDepth();
+			if (undoStack.size() > undoStackDepth) {
+				Msg.debug(this, "undo: " + description);
+				
+				undoStack.pop();
+			} else {
+				Msg.debug(this, "redo: " + description);
+				
+				UserEvent redoEvent = new UserEvent(description);
+				undoStack.push(redoEvent);
+			}
+
 		}
 		
 	}
@@ -212,6 +269,7 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 
 		// Customize GUI
 		private void buildPanel() {
+			// TODO: Create a Panel where a user may specify a "Start Date" and an "End Date" 
 			panel = new JPanel(new BorderLayout());
 			JTextArea textArea = new JTextArea(5, 25);
 			textArea.setEditable(false);
@@ -221,7 +279,9 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 
 		// TODO: Customize actions
 		private void createActions() {
-			action = new DockingAction("My Action", getName()) {
+			// TODO: Modify button to read the recorded user events from disk and collect metrics.
+			// TODO: Modify Panel to set new images and text based on the metrics collected.
+			action = new DockingAction("Ghidra Retrospective", getName()) {
 				@Override
 				public void actionPerformed(ActionContext context) {
 					Msg.showInfo(getClass(), panel, "Custom Action", "Hello!");
