@@ -17,9 +17,13 @@ package ghidrawrapped;
 
 import java.awt.BorderLayout;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.Scanner;
 
 import javax.swing.*;
 
@@ -86,9 +90,12 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		
 		listener = new ListenerForProgramChanges();
 		
-		ToolOptions toolOptions = pluginTool.getOptions(ToolConstants.TOOL_OPTIONS);
-		toolOptions.registerOption(EVENT_FILEPATH, "", null,
-				"Specifies the filename to read and write user events to.");
+		ToolOptions toolOptions = pluginTool.getOptions("ghidrawrapped");
+		if (!Objects.isNull(toolOptions)) {
+			toolOptions.registerOption(EVENT_FILEPATH, "", null,
+					"Specifies the filename to read and write user events to.");
+		}
+		
 	}
 
 	@Override
@@ -114,13 +121,44 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	protected void prepareToSave(DomainObject dobj) {
 		super.prepareToSave(dobj);
 		
-		ToolOptions pluginOptions = pluginTool.getOptions(EVENT_FILEPATH);
-		File eventFile = pluginOptions.getFile(EVENT_FILEPATH, null);
+		ToolOptions toolOptions = pluginTool.getOptions("ghidrawrapped");
+		String eventFileAsString = toolOptions.getString(EVENT_FILEPATH, EVENT_FILEPATH);
+		
+	    FileWriter myWriter = null;
+		try {
+			myWriter = new FileWriter(eventFileAsString);
+		} catch (IOException e) {
+	    	Msg.error(this, e.getMessage());
+		}
+		
+		//File eventFile = toolOptions.getFile(EVENT_FILEPATH, null);
 		
 		// TODO: write to file
 		Msg.debug(this, "prepareToSave: ");
-		if (!Objects.isNull(eventFile)) {
-			Msg.debug(this, "prepareToSave: " + eventFile.getName());
+		if (!Objects.isNull(eventFileAsString)) {
+			Msg.debug(this,  "prepareToSave(s): " + eventFileAsString);
+		}
+		
+		
+		if (!Objects.isNull(myWriter)) {
+			Msg.debug(this, "prepareToSave(w): ");
+			
+			while (!listener.undoStack.isEmpty()) {
+				UserEvent event = listener.undoStack.pop();
+				Msg.debug(this,  "prepareToSave: event - " + event.eventDescription);
+				try {
+					myWriter.write(event.eventDescription + "\n");
+					myWriter.flush();
+				} catch (IOException e) {
+					Msg.error(this,  "prepareToSave(w): error - " + e.getMessage());
+				}
+			}
+			
+			try {
+				myWriter.close();
+			} catch (IOException e) {
+				Msg.error(this,  "prepareToSave close: error - " + e.getMessage());
+			}
 		}
 
 	}
@@ -152,7 +190,7 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	class ListenerForProgramChanges implements TransactionListener {
 		private static final int MAX_UNDO_REDO_SIZE = 50;
 		
-		private FixedSizeStack<UserEvent> undoStack = new FixedSizeStack<>(MAX_UNDO_REDO_SIZE);
+		public FixedSizeStack<UserEvent> undoStack = new FixedSizeStack<>(MAX_UNDO_REDO_SIZE);
 		
 		public ListenerForProgramChanges() {
 		}
@@ -285,6 +323,39 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 				@Override
 				public void actionPerformed(ActionContext context) {
 					Msg.showInfo(getClass(), panel, "Custom Action", "Hello!");
+					
+					ToolOptions toolOptions = dockingTool.getOptions("ghidrawrapped");
+					if (Objects.isNull(toolOptions)) {
+						return;
+					}
+					
+					String eventFileAsString = toolOptions.getString("Event Filepath", "Event Filepath");
+					
+					// FIXME: Expected option type: FILE_TYPE, but was STRING_TYPE
+					//File eventFile = toolOptions.getFile("Event Filepath", null);
+					File eventFile = null;
+
+					try {
+						eventFile = new File(eventFileAsString);
+						Scanner myReader = new Scanner(eventFile);
+						while (myReader.hasNextLine()) {
+							String data = myReader.nextLine();
+							Msg.info(this, data);
+						}
+						myReader.close();
+				    } catch (FileNotFoundException e) {
+				    	Msg.error(this, e.getMessage());
+				    }
+					
+					Msg.debug(this, "actionPerformed: ");
+					if (!Objects.isNull(eventFileAsString)) {
+						Msg.debug(this,  "actionPerformed(s): " + eventFileAsString);
+					}
+					
+					if (!Objects.isNull(eventFile)) {
+						Msg.debug(this, "actionPerformed: " + eventFile.getName());
+					}
+					
 				}
 			};
 			action.setToolBarData(new ToolBarData(Icons.ADD_ICON, null));
