@@ -16,15 +16,22 @@
 package ghidrawrapped;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.Scanner;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 
 import docking.ActionContext;
@@ -47,6 +54,7 @@ import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
 import ghidra.util.datastruct.FixedSizeStack;
 import resources.Icons;
+import resources.ResourceManager;
 
 /**
  * Inspired by Spotify Wrapped, track user modifications to a Program to
@@ -290,6 +298,7 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	// TODO: If provider is desired, it is recommended to move it to its own file
 	private static class MyProvider extends ComponentProvider {
 
+		private JFrame frame;
 		private JPanel panel;
 		private DockingAction action;
 		Program program;
@@ -308,11 +317,53 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		// Customize GUI
 		private void buildPanel() {
 			// TODO: Create a Panel where a user may specify a "Start Date" and an "End Date" 
-			panel = new JPanel(new BorderLayout());
+			//panel = new JPanel(new BorderLayout());
+			
+			frame = new JFrame("tabbed");
+						
+			String firstTabName = "first tab";
+			String secondTabName = "second tab";
+			
+			JTabbedPane tabbedPane = new JTabbedPane();
+			panel = new JPanel(new CardLayout());
+			
 			JTextArea textArea = new JTextArea(5, 25);
 			textArea.setEditable(false);
-			panel.add(new JScrollPane(textArea));
+			panel.add(new JScrollPane(textArea), "first");
 			setVisible(true);
+			
+			InputStream in = ResourceManager.getResourceAsStream("images/Author.png");
+			if (Objects.isNull(in)) {
+				Msg.error(this,  "resource returned null!");
+				return;
+			}
+			
+			BufferedImage myPicture = null;
+			try {
+				myPicture = ImageIO.read(in);
+			} catch (IOException e) {
+				Msg.error(this,  e);
+			}
+			if (Objects.isNull(myPicture)) {
+				Msg.error(this,  "file read returned null!");
+				return;
+			}
+			
+			ImageIcon icon = new ImageIcon(myPicture);
+			ImageIcon scaledIcon = ResourceManager.getScaledIcon(icon, 512, 512);
+			
+			JLabel picLabel = new JLabel(scaledIcon);
+			
+			tabbedPane.addTab(firstTabName, panel);
+			tabbedPane.addTab(secondTabName, picLabel);
+			
+			frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+			frame.pack();
+			frame.setVisible(true);
+			
+			//panel.add(frame);
+			//panel.setVisible(true);
+			
 		}
 
 		// TODO: Customize actions
@@ -368,5 +419,6 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		public JComponent getComponent() {
 			return panel;
 		}
+
 	}
 }
