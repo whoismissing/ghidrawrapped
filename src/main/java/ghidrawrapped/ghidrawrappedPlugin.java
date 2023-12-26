@@ -317,24 +317,23 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		// Customize GUI
 		private void buildPanel() {
 			// TODO: Create a Panel where a user may specify a "Start Date" and an "End Date" 
-			//panel = new JPanel(new BorderLayout());
+			panel = new JPanel(new CardLayout());
 			
-			frame = new JFrame("tabbed");
+			//frame = new JFrame("tabbed");
 						
 			String firstTabName = "first tab";
 			String secondTabName = "second tab";
 			
 			JTabbedPane tabbedPane = new JTabbedPane();
-			panel = new JPanel(new CardLayout());
 			
 			JTextArea textArea = new JTextArea(5, 25);
 			textArea.setEditable(false);
-			panel.add(new JScrollPane(textArea), "first");
+			//panel.add(new JScrollPane(textArea));
 			setVisible(true);
 			
 			InputStream in = ResourceManager.getResourceAsStream("images/Author.png");
 			if (Objects.isNull(in)) {
-				Msg.error(this,  "resource returned null!");
+				Msg.error(this,  "resource manager returned null!");
 				return;
 			}
 			
@@ -354,12 +353,14 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			
 			JLabel picLabel = new JLabel(scaledIcon);
 			
-			tabbedPane.addTab(firstTabName, panel);
+			tabbedPane.addTab(firstTabName, new JScrollPane(textArea));
 			tabbedPane.addTab(secondTabName, picLabel);
 			
-			frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
-			frame.pack();
-			frame.setVisible(true);
+			panel.add(tabbedPane);
+			panel.setVisible(true);			
+			//frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+			//frame.pack();
+			//frame.setVisible(true);
 			
 			//panel.add(frame);
 			//panel.setVisible(true);
