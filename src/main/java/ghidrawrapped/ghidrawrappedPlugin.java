@@ -17,6 +17,7 @@ package ghidrawrapped;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -28,6 +29,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -71,7 +73,7 @@ import resources.ResourceManager;
 //@formatter:on
 public class ghidrawrappedPlugin extends ProgramPlugin {
 
-	MyProvider provider;
+	GhidraWrappedProvider provider;
 	Program program;
 	PluginTool pluginTool;
 
@@ -85,11 +87,11 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	 */
 	public ghidrawrappedPlugin(PluginTool tool) {
 		super(tool, true, true);
+		pluginTool = tool;
 
 		// TODO: Customize provider (or remove if a provider is not desired)
 		String pluginName = getName();
-		provider = new MyProvider(this, pluginName);
-		pluginTool = tool;
+		provider = new GhidraWrappedProvider(this, pluginName);
 
 		// TODO: Customize help (or remove if help is not desired)
 		String topicName = this.getClass().getPackage().getName();
@@ -114,23 +116,14 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	}
 	
 	@Override
-	public void readConfigState(SaveState saveState) {
-		// TODO: Figure out how to permit users to specify a record file location in the Tool
-		// configuration.
-	    Msg.debug(this, "readConfigState() called");
-	}
-
-	@Override
-	public void writeConfigState(SaveState saveState) {
-	    Msg.debug(this, "writeConfigState() called");
-	}
-	
-	@Override
 	protected void prepareToSave(DomainObject dobj) {
 		super.prepareToSave(dobj);
 		
 		ToolOptions toolOptions = pluginTool.getOptions("ghidrawrapped");
 		String eventFileAsString = toolOptions.getString(EVENT_FILEPATH, EVENT_FILEPATH);
+		
+		// FIXME: Persist tool option as a File object instead of converting from a string
+		//File eventFile = toolOptions.getFile(EVENT_FILEPATH, null);
 		
 	    FileWriter myWriter = null;
 		try {
@@ -139,9 +132,6 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	    	Msg.error(this, e.getMessage());
 		}
 		
-		//File eventFile = toolOptions.getFile(EVENT_FILEPATH, null);
-		
-		// TODO: write to file
 		Msg.debug(this, "prepareToSave: ");
 		if (!Objects.isNull(eventFileAsString)) {
 			Msg.debug(this,  "prepareToSave(s): " + eventFileAsString);
@@ -174,13 +164,14 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	@Override
 	protected void programActivated(Program p) {
 		super.programActivated(p);
-		
-		provider.setProgram(p);
-		
+				
 		program = p;
 		program.addTransactionListener(listener);
 	}
 	
+	/**
+	 * Record of a user interaction with the disassembler framework
+	 */
 	class UserEvent {
 		
 		OffsetDateTime eventTime;
@@ -191,7 +182,7 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			eventDescription = description;			
 		}
 	}
-	
+		
 	/**
 	 * Listener applied to current Program which will record all undoable actions to a stack.
 	 */
@@ -296,40 +287,66 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	}
 
 	// TODO: If provider is desired, it is recommended to move it to its own file
-	private static class MyProvider extends ComponentProvider {
+	private static class GhidraWrappedProvider extends ComponentProvider {
 
-		private JFrame frame;
-		private JPanel panel;
+		private JPanel mainPanel;
+		private JPanel renamePanel;
+		private JPanel structPanel;
+		private JPanel graphicPanel;
+		private JTabbedPane tabbedPane;
 		private DockingAction action;
-		Program program;
-
-		public MyProvider(Plugin plugin, String owner) {
+		
+		private HashMap<String, Integer> eventMap;
+		
+		public GhidraWrappedProvider(Plugin plugin, String owner) {
 			super(plugin.getTool(), owner, owner);
 			buildPanel();
 			createActions();
-		}
-
-		public void setProgram(Program p) {
-			// TODO Auto-generated method stub
-			program = p;
+			
+			eventMap = new HashMap<String, Integer>();
+			eventMap.put("RENAME", new Integer(0));
+			eventMap.put("STRUCTURE", new Integer(0));
+			eventMap.put("GRAPHICAL", new Integer(0));
 		}
 
 		// Customize GUI
 		private void buildPanel() {
 			// TODO: Create a Panel where a user may specify a "Start Date" and an "End Date" 
-			panel = new JPanel(new CardLayout());
+			// TODO: Modify Panel to set new images and text based on the metrics collected.
+
+			mainPanel = new JPanel(new CardLayout());
+			renamePanel = new JPanel(new BorderLayout());
+			structPanel = new JPanel(new BorderLayout());
+			graphicPanel = new JPanel(new BorderLayout());
 			
-			//frame = new JFrame("tabbed");
-						
-			String firstTabName = "first tab";
-			String secondTabName = "second tab";
+			String firstTabName = "Rename Stats";
+			String secondTabName = "Structure Stats";
+			String thirdTabName = "Graphical Stats";
+			tabbedPane = new JTabbedPane();
 			
-			JTabbedPane tabbedPane = new JTabbedPane();
+			tabbedPane.addTab(firstTabName, renamePanel);
+			tabbedPane.addTab(secondTabName, structPanel);
+			tabbedPane.addTab(thirdTabName, graphicPanel);
+			mainPanel.add(tabbedPane);
+			mainPanel.setVisible(true);
+		}
+		
+		private void updatePanel() {
+			if (Objects.isNull(renamePanel)) {
+				return;
+			}
 			
-			JTextArea textArea = new JTextArea(5, 25);
-			textArea.setEditable(false);
-			//panel.add(new JScrollPane(textArea));
-			setVisible(true);
+			if (Objects.isNull(structPanel)) {
+				return;
+			}
+			
+			if (Objects.isNull(graphicPanel)) {
+				return;
+			}
+			
+			renamePanel.setBackground(new Color(106, 0, 186, 1)); // Purple
+			structPanel.setBackground(new Color(18, 18, 18, 1)); // Black
+			graphicPanel.setBackground(new Color(247, 116, 194, 1)); // Pink
 			
 			InputStream in = ResourceManager.getResourceAsStream("images/Author.png");
 			if (Objects.isNull(in)) {
@@ -350,31 +367,54 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			
 			ImageIcon icon = new ImageIcon(myPicture);
 			ImageIcon scaledIcon = ResourceManager.getScaledIcon(icon, 512, 512);
-			
 			JLabel picLabel = new JLabel(scaledIcon);
-			
-			tabbedPane.addTab(firstTabName, new JScrollPane(textArea));
-			tabbedPane.addTab(secondTabName, picLabel);
-			
-			panel.add(tabbedPane);
-			panel.setVisible(true);			
-			//frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
-			//frame.pack();
-			//frame.setVisible(true);
-			
-			//panel.add(frame);
-			//panel.setVisible(true);
-			
+			String fourthTabName = "Your Wrapped";
+			tabbedPane.addTab(fourthTabName, picLabel);
+
+		}
+		
+		private boolean eventIsRename(String description) {
+			if (description.contains("")) {
+				return true;
+			}
+			return false;
+		}
+		
+		private boolean eventIsStructure(String description) {
+			if (description.contains("")) {
+				return true;
+			}
+			return false;
+		}
+		
+		private boolean eventIsGraphical(String description) {
+			if (description.contains("")) {
+				return true;
+			}
+			return false;
+		}
+		
+		/**
+		 * Increment the event count given an event category.
+		 * @param event
+		 */
+		private void incrementEvent(String event) {
+			if (event.contentEquals("RENAME") || event.contentEquals("STRUCTURE") || event.contentEquals("GRAPHICAL")) {
+				Integer eventCount = eventMap.get(event);
+				eventCount += 1;
+				eventMap.put(event, eventCount);
+			}
 		}
 
-		// TODO: Customize actions
+		/**
+		 * Create a button whose corresponding action will read the recorded user events from the configured event file path and record a summary of the results into the Provider
+		 * which will display them in the panel.
+		 */
 		private void createActions() {
-			// TODO: Modify button to read the recorded user events from disk and collect metrics.
-			// TODO: Modify Panel to set new images and text based on the metrics collected.
 			action = new DockingAction("Ghidra Retrospective", getName()) {
 				@Override
 				public void actionPerformed(ActionContext context) {
-					Msg.showInfo(getClass(), panel, "Custom Action", "Hello!");
+					Msg.showInfo(getClass(), mainPanel, "Summarize Results", "Processing your year in review...");
 					
 					ToolOptions toolOptions = dockingTool.getOptions("ghidrawrapped");
 					if (Objects.isNull(toolOptions)) {
@@ -382,9 +422,12 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 					}
 					
 					String eventFileAsString = toolOptions.getString("Event Filepath", "Event Filepath");
+					if (Objects.isNull(eventFileAsString)) {
+						return;
+					}
 					
 					// FIXME: Expected option type: FILE_TYPE, but was STRING_TYPE
-					//File eventFile = toolOptions.getFile("Event Filepath", null);
+					// File eventFile = toolOptions.getFile("Event Filepath", null);
 					File eventFile = null;
 
 					try {
@@ -393,6 +436,14 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 						while (myReader.hasNextLine()) {
 							String data = myReader.nextLine();
 							Msg.info(this, data);
+							
+							if (eventIsRename(data)) {
+								incrementEvent("RENAME");
+							} else if (eventIsGraphical(data)) {
+								incrementEvent("GRAPHICAL");
+							} else if (eventIsStructure(data)) {
+								incrementEvent("STRUCTURE");
+							}
 						}
 						myReader.close();
 				    } catch (FileNotFoundException e) {
@@ -408,17 +459,29 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 						Msg.debug(this, "actionPerformed: " + eventFile.getName());
 					}
 					
+					updatePanel();
 				}
 			};
+			
+			if (Objects.isNull(action)) {
+				Msg.error(this,  "createActions: action is null!");
+				return;
+			}
+			
 			action.setToolBarData(new ToolBarData(Icons.ADD_ICON, null));
 			action.setEnabled(true);
 			action.markHelpUnnecessary();
+			
+			if (Objects.isNull(dockingTool)) {
+				Msg.error(this,  "creationActions: dockingTool is null!");
+				return;
+			}
 			dockingTool.addLocalAction(this, action);
 		}
 
 		@Override
 		public JComponent getComponent() {
-			return panel;
+			return mainPanel;
 		}
 
 	}
