@@ -19,6 +19,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -295,6 +296,9 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		private JPanel renamePanel;
 		private JPanel structPanel;
 		private JPanel graphicPanel;
+		private JTextField renameText;
+		private JTextField structText;
+		private JTextField graphicText;
 		private JTabbedPane tabbedPane;
 		private DockingAction action;
 		
@@ -320,9 +324,9 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			// TODO: Modify Panel to set new images and text based on the metrics collected.
 
 			mainPanel = new JPanel(new CardLayout());
-			renamePanel = new JPanel(new BorderLayout());
-			structPanel = new JPanel(new BorderLayout());
-			graphicPanel = new JPanel(new BorderLayout());
+			renamePanel = new JPanel(new FlowLayout(SwingConstants.LEADING, 10, 10));
+			structPanel = new JPanel(new FlowLayout(SwingConstants.LEADING, 10, 10));
+			graphicPanel = new JPanel(new FlowLayout(SwingConstants.LEADING, 10, 10));
 			
 			String firstTabName = "Rename Stats";
 			String secondTabName = "Structure Stats";
@@ -395,6 +399,21 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			Integer structCount = eventMap.get("STRUCTURE");
 			Integer graphicalCount = eventMap.get("GRAPHICAL");
 			
+			renameText = new JTextField(12);
+			renameText.setText("x Rename Events were observed");
+			renameText.setFont(renameText.getFont().deriveFont(50f));
+			renameText.setVisible(true);
+			
+			structText = new JTextField(12);
+			structText.setText("x Struct Events were observed");
+			structText.setFont(structText.getFont().deriveFont(50f));
+			structText.setVisible(true);
+			
+			graphicText = new JTextField(12);
+			graphicText.setText("x Graphic Events were observed");
+			graphicText.setFont(graphicText.getFont().deriveFont(50f));
+			graphicText.setVisible(true);
+			
 			// TODO: Swap out counts in text
 			class RenamePanel extends JPanel {
 				@Override
@@ -410,7 +429,10 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			        return new Dimension(400,400);
 			    }
 			}
-			renamePanel.add(new RenamePanel());
+			RenamePanel rPanel = new RenamePanel();
+			rPanel.add(renameText);
+			rPanel.setVisible(true);
+			renamePanel.add(rPanel);
 			renamePanel.setBackground(new Color(106, 0, 186, 1));
 			renamePanel.setSize(512, 512);
 			renamePanel.setVisible(true);
@@ -429,7 +451,10 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			        return new Dimension(400,400);
 			    }
 			}
-			structPanel.add(new StructPanel());
+			StructPanel sPanel = new StructPanel();
+			sPanel.add(structText);
+			sPanel.setVisible(true);
+			structPanel.add(sPanel);
 			structPanel.setBackground(new Color(18, 18, 18, 1));
 			structPanel.setSize(512, 512);
 			structPanel.setVisible(true);
@@ -448,7 +473,10 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			        return new Dimension(400,400);
 			    }
 			}
-			graphicPanel.add(new GraphicPanel());
+			GraphicPanel gPanel = new GraphicPanel();
+			gPanel.add(graphicText);
+			gPanel.setVisible(true);
+			graphicPanel.add(gPanel);
 			graphicPanel.setBackground(new Color(247, 116, 194, 1));
 			graphicPanel.setSize(512, 512);
 			graphicPanel.setVisible(true);
