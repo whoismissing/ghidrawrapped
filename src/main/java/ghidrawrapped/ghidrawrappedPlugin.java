@@ -18,6 +18,8 @@ package ghidrawrapped;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -335,21 +337,30 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		}
 		
 		public boolean eventIsRename(String description) {
-			if (description.contains("")) {
+			if (description.contains("Edit Label")) {
+				return true;
+			} else if (description.contains("Rename Local Variable")) {
+				return true;
+			} else if (description.contains("Set Comments")) {
 				return true;
 			}
 			return false;
 		}
 		
 		public boolean eventIsStructure(String description) {
-			if (description.contains("")) {
+			if (description.contains("Edit Function")) {
+				return true;
+			} else if (description.contains("Create ")) {
+				// Examples: "Create int" "Create dword"
+				return true;
+			} else if (description.contains("Retype Variable")) {
 				return true;
 			}
 			return false;
 		}
 		
 		public boolean eventIsGraphical(String description) {
-			if (description.contains("")) {
+			if (description.contains("Set Background Color")) {
 				return true;
 			}
 			return false;
@@ -380,11 +391,78 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 				return;
 			}
 			
-			renamePanel.setBackground(new Color(106, 0, 186, 1)); // Purple
-			structPanel.setBackground(new Color(18, 18, 18, 1)); // Black
-			graphicPanel.setBackground(new Color(247, 116, 194, 1)); // Pink
+			Integer renameCount = eventMap.get("RENAME");
+			Integer structCount = eventMap.get("STRUCTURE");
+			Integer graphicalCount = eventMap.get("GRAPHICAL");
 			
-			InputStream in = ResourceManager.getResourceAsStream("images/Author.png");
+			// TODO: Swap out counts in text
+			class RenamePanel extends JPanel {
+				@Override
+			    public void paintComponent(Graphics g) {
+			        super.paintComponent(g);
+			        Color color = new Color(106, 0, 186, 1); // Purple
+			        g.setColor(color);
+			        g.drawRect(100, 10, 30, 40);
+			    }
+
+			    @Override
+			    public Dimension getPreferredSize() {
+			        return new Dimension(400,400);
+			    }
+			}
+			renamePanel.add(new RenamePanel());
+			renamePanel.setBackground(new Color(106, 0, 186, 1));
+			renamePanel.setSize(512, 512);
+			renamePanel.setVisible(true);
+			
+			class StructPanel extends JPanel {
+				@Override
+			    public void paintComponent(Graphics g) {
+			        super.paintComponent(g);
+			        Color color = new Color(18, 18, 18, 1); // Black
+			        g.setColor(color);
+			        g.drawRect(100, 10, 30, 40);
+			    }
+
+			    @Override
+			    public Dimension getPreferredSize() {
+			        return new Dimension(400,400);
+			    }
+			}
+			structPanel.add(new StructPanel());
+			structPanel.setBackground(new Color(18, 18, 18, 1));
+			structPanel.setSize(512, 512);
+			structPanel.setVisible(true);
+			
+			class GraphicPanel extends JPanel {
+				@Override
+			    public void paintComponent(Graphics g) {
+			        super.paintComponent(g);
+			        Color color = new Color(247, 116, 194, 1); // Pink
+			        g.setColor(color);
+			        g.drawRect(100, 10, 30, 40);
+			    }
+
+			    @Override
+			    public Dimension getPreferredSize() {
+			        return new Dimension(400,400);
+			    }
+			}
+			graphicPanel.add(new GraphicPanel());
+			graphicPanel.setBackground(new Color(247, 116, 194, 1));
+			graphicPanel.setSize(512, 512);
+			graphicPanel.setVisible(true);
+			
+			InputStream in = null;
+			
+			if ((renameCount >= structCount) && (renameCount >= graphicalCount)) {
+				in = ResourceManager.getResourceAsStream("images/Author.png");
+			} else if ((structCount >= renameCount) && (structCount >= graphicalCount)) {
+				in = ResourceManager.getResourceAsStream("images/Architect.png");
+			} else {
+				in = ResourceManager.getResourceAsStream("images/Artist.png");
+			}
+
 			if (Objects.isNull(in)) {
 				Msg.error(this,  "resource manager returned null!");
 				return;
