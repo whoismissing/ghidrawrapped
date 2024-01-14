@@ -300,6 +300,9 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 		
 		public GhidraWrappedProvider(Plugin plugin, String owner) {
 			super(plugin.getTool(), owner, owner);
+			
+			plugin.getTool().addComponentProvider(this, false);
+			
 			buildPanel();
 			createActions();
 			
@@ -329,6 +332,39 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			tabbedPane.addTab(thirdTabName, graphicPanel);
 			mainPanel.add(tabbedPane);
 			mainPanel.setVisible(true);
+		}
+		
+		public boolean eventIsRename(String description) {
+			if (description.contains("")) {
+				return true;
+			}
+			return false;
+		}
+		
+		public boolean eventIsStructure(String description) {
+			if (description.contains("")) {
+				return true;
+			}
+			return false;
+		}
+		
+		public boolean eventIsGraphical(String description) {
+			if (description.contains("")) {
+				return true;
+			}
+			return false;
+		}
+		
+		/**
+		 * Increment the event count given an event category.
+		 * @param event
+		 */
+		public void incrementEvent(String event) {
+			if (event.contentEquals("RENAME") || event.contentEquals("STRUCTURE") || event.contentEquals("GRAPHICAL")) {
+				Integer eventCount = eventMap.get(event);
+				eventCount += 1;
+				eventMap.put(event, eventCount);
+			}
 		}
 		
 		private void updatePanel() {
@@ -371,39 +407,6 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			String fourthTabName = "Your Wrapped";
 			tabbedPane.addTab(fourthTabName, picLabel);
 
-		}
-		
-		private boolean eventIsRename(String description) {
-			if (description.contains("")) {
-				return true;
-			}
-			return false;
-		}
-		
-		private boolean eventIsStructure(String description) {
-			if (description.contains("")) {
-				return true;
-			}
-			return false;
-		}
-		
-		private boolean eventIsGraphical(String description) {
-			if (description.contains("")) {
-				return true;
-			}
-			return false;
-		}
-		
-		/**
-		 * Increment the event count given an event category.
-		 * @param event
-		 */
-		private void incrementEvent(String event) {
-			if (event.contentEquals("RENAME") || event.contentEquals("STRUCTURE") || event.contentEquals("GRAPHICAL")) {
-				Integer eventCount = eventMap.get(event);
-				eventCount += 1;
-				eventMap.put(event, eventCount);
-			}
 		}
 
 		/**
@@ -473,7 +476,7 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			action.markHelpUnnecessary();
 			
 			if (Objects.isNull(dockingTool)) {
-				Msg.error(this,  "creationActions: dockingTool is null!");
+				Msg.error(this,  "createActions: dockingTool is null!");
 				return;
 			}
 			dockingTool.addLocalAction(this, action);
