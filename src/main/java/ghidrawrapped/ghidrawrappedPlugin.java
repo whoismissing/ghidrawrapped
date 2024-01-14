@@ -293,12 +293,13 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 	private static class GhidraWrappedProvider extends ComponentProvider {
 
 		private JPanel mainPanel;
-		private JPanel renamePanel;
-		private JPanel structPanel;
-		private JPanel graphicPanel;
+		private JLabel renamePanel;
+		private JLabel structPanel;
+		private JLabel graphicPanel;
 		private JTextField renameText;
 		private JTextField structText;
 		private JTextField graphicText;
+		private JLabel picLabel;
 		private JTabbedPane tabbedPane;
 		private DockingAction action;
 		
@@ -317,6 +318,27 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			eventMap.put("STRUCTURE", new Integer(0));
 			eventMap.put("GRAPHICAL", new Integer(0));
 		}
+		
+		private JLabel getFrame(String frameName) {
+			InputStream in = null;			
+			in = ResourceManager.getResourceAsStream(frameName);
+			
+			BufferedImage myPicture = null;
+			try {
+				myPicture = ImageIO.read(in);
+			} catch (IOException e) {
+				Msg.error(this, e);
+			}
+			if (Objects.isNull(myPicture)) {
+				Msg.error(this,  "file read returned null!");
+				return null;
+			}
+			
+			ImageIcon icon = new ImageIcon(myPicture);
+			ImageIcon scaledIcon = ResourceManager.getScaledIcon(icon, 512, 512);
+			JLabel pLabel = new JLabel(scaledIcon);
+			return pLabel;
+		}
 
 		// Customize GUI
 		private void buildPanel() {
@@ -324,9 +346,9 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			// TODO: Modify Panel to set new images and text based on the metrics collected.
 
 			mainPanel = new JPanel(new CardLayout());
-			renamePanel = new JPanel(new FlowLayout(SwingConstants.LEADING, 10, 10));
-			structPanel = new JPanel(new FlowLayout(SwingConstants.LEADING, 10, 10));
-			graphicPanel = new JPanel(new FlowLayout(SwingConstants.LEADING, 10, 10));
+			renamePanel = getFrame("images/frame1.PNG");
+			structPanel = getFrame("images/frame2.PNG");
+			graphicPanel = getFrame("images/frame3.PNG");
 			
 			String firstTabName = "Rename Stats";
 			String secondTabName = "Structure Stats";
@@ -400,95 +422,35 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			Integer graphicalCount = eventMap.get("GRAPHICAL");
 			
 			renameText = new JTextField(12);
-			renameText.setText("x Rename Events were observed");
-			renameText.setFont(renameText.getFont().deriveFont(50f));
-			renameText.setVisible(true);
-			
-			structText = new JTextField(12);
-			structText.setText("x Struct Events were observed");
-			structText.setFont(structText.getFont().deriveFont(50f));
-			structText.setVisible(true);
-			
-			graphicText = new JTextField(12);
-			graphicText.setText("x Graphic Events were observed");
-			graphicText.setFont(graphicText.getFont().deriveFont(50f));
-			graphicText.setVisible(true);
-			
-			// TODO: Swap out counts in text
-			class RenamePanel extends JPanel {
-				@Override
-			    public void paintComponent(Graphics g) {
-			        super.paintComponent(g);
-			        Color color = new Color(106, 0, 186, 1); // Purple
-			        g.setColor(color);
-			        g.drawRect(100, 10, 30, 40);
-			    }
-
-			    @Override
-			    public Dimension getPreferredSize() {
-			        return new Dimension(400,400);
-			    }
-			}
-			RenamePanel rPanel = new RenamePanel();
-			rPanel.add(renameText);
-			rPanel.setVisible(true);
-			renamePanel.add(rPanel);
-			renamePanel.setBackground(new Color(106, 0, 186, 1));
-			renamePanel.setSize(512, 512);
+			renamePanel.setText(renameCount.toString() + " Rename Events were observed");
+			renamePanel.setHorizontalTextPosition(SwingConstants.CENTER);
+			renamePanel.setFont(renameText.getFont().deriveFont(20f));
 			renamePanel.setVisible(true);
 			
-			class StructPanel extends JPanel {
-				@Override
-			    public void paintComponent(Graphics g) {
-			        super.paintComponent(g);
-			        Color color = new Color(18, 18, 18, 1); // Black
-			        g.setColor(color);
-			        g.drawRect(100, 10, 30, 40);
-			    }
-
-			    @Override
-			    public Dimension getPreferredSize() {
-			        return new Dimension(400,400);
-			    }
-			}
-			StructPanel sPanel = new StructPanel();
-			sPanel.add(structText);
-			sPanel.setVisible(true);
-			structPanel.add(sPanel);
-			structPanel.setBackground(new Color(18, 18, 18, 1));
-			structPanel.setSize(512, 512);
+			structText = new JTextField(12);
+			structPanel.setText(structCount.toString() + " Struct Events were observed");
+			structPanel.setHorizontalTextPosition(SwingConstants.CENTER);
+			structPanel.setFont(structText.getFont().deriveFont(20f));
 			structPanel.setVisible(true);
 			
-			class GraphicPanel extends JPanel {
-				@Override
-			    public void paintComponent(Graphics g) {
-			        super.paintComponent(g);
-			        Color color = new Color(247, 116, 194, 1); // Pink
-			        g.setColor(color);
-			        g.drawRect(100, 10, 30, 40);
-			    }
-
-			    @Override
-			    public Dimension getPreferredSize() {
-			        return new Dimension(400,400);
-			    }
-			}
-			GraphicPanel gPanel = new GraphicPanel();
-			gPanel.add(graphicText);
-			gPanel.setVisible(true);
-			graphicPanel.add(gPanel);
-			graphicPanel.setBackground(new Color(247, 116, 194, 1));
-			graphicPanel.setSize(512, 512);
+			graphicText = new JTextField(12);
+			graphicPanel.setText(graphicalCount.toString() + " Graphic Events were observed");
+			graphicPanel.setHorizontalTextPosition(SwingConstants.CENTER);
+			graphicPanel.setFont(graphicText.getFont().deriveFont(20f));
 			graphicPanel.setVisible(true);
 			
 			InputStream in = null;
 			
+			String wrappedText = "";
 			if ((renameCount >= structCount) && (renameCount >= graphicalCount)) {
 				in = ResourceManager.getResourceAsStream("images/Author.png");
+				wrappedText = "You are an author!";
 			} else if ((structCount >= renameCount) && (structCount >= graphicalCount)) {
 				in = ResourceManager.getResourceAsStream("images/Architect.png");
+				wrappedText = "You are an architect!";
 			} else {
 				in = ResourceManager.getResourceAsStream("images/Artist.png");
+				wrappedText = "You are an artist!";
 			}
 
 			if (Objects.isNull(in)) {
@@ -509,10 +471,13 @@ public class ghidrawrappedPlugin extends ProgramPlugin {
 			
 			ImageIcon icon = new ImageIcon(myPicture);
 			ImageIcon scaledIcon = ResourceManager.getScaledIcon(icon, 512, 512);
-			JLabel picLabel = new JLabel(scaledIcon);
+			picLabel = new JLabel(scaledIcon);
+			picLabel.setText(wrappedText);
+			picLabel.setHorizontalTextPosition(SwingConstants.CENTER);
+			picLabel.setVerticalTextPosition(SwingConstants.BOTTOM);
+			picLabel.setFont(graphicText.getFont().deriveFont(20f));
 			String fourthTabName = "Your Wrapped";
 			tabbedPane.addTab(fourthTabName, picLabel);
-
 		}
 
 		/**
